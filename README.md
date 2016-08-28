@@ -1,5 +1,5 @@
 # Kuroshio_FinalProduct
-All useful scripts produced for research on the Kuroshio Frontal extension microplanton ecology. All work was produced under the supervision of Dr. Sophie Clayton within the Armbrust lab of the Department of Oceanography and is ultimately a freely available product of the University of Washington. 
+All useful scripts here were made for research on the Kuroshio Frontal extension microplanton ecology. All work was produced under the supervision of Dr. Sophie Clayton within the Armbrust lab of the Department of Oceanography and is ultimately a freely available product of the University of Washington. 
 
 The files uploaded here have been entirely written and produced by myself, Trevor Eakes. 
 
@@ -20,41 +20,51 @@ Finally a script is also included in this repository with functions I have built
 
 ORDER OF OPERATIONS: 
 
-1. Diversity_DataframeConstruction.Rmd
+1st Diversity_DataframeConstruction.Rmd
 This file calculates diversity indices, estimates chlorohpyll concentration for each sample, clusters samples in groups, cleans up the data, and converts microplankton abundance into centiliters instead of liters. All edited dataframes are exported as csv. files automatically with set names. These files will be the basis for future analysis by later Rmd. files.
 
-REQUIRED: 
+  REQUIRED: 
 -TrevNiffyFunctions.R
 -KuroAlldata.csv
 -Allbigstuff.csv
 -Kuroshio_Phytoplankton.csv
 -origin.csv
 
-2. Species_Spatial_Correlations.Rmd
+2nd Species_Spatial_Correlations.Rmd
 Mantel and Partial Mantel tests are calculted from dissimilarity diversity indices and distance matrices and results are plotted. However, Mantel tests are no longer a statistically supported method in this case and the most advanced statistical methods currently available should be employed instead. By replacing all instances of the centitest.csv with centiorigin.csv one can repeat this code using all phytonplanton sampled. 
 
 REQUIRED: 
 -Adiv.abiotic.csv
 -centitest.csv
 
-3. Rarefaction_Heatmap.Rmd
+3rd Rarefaction_Heatmap.Rmd
 Samples are grouped by salinity and temperature using a clustering method and Rarefaction curves are calculated from seperate groups using the latests developments in ecology. In addition a heat map is made showing total abundance of species for a given group. By replacing all instances of the centitest.csv with centiorigin.csv one can repeat this code using all phytonplanton sampled.
 
 REQUIRED:
 -centitest.csv
 -Adiv.abiotic
 
-4. Antarctic_Rarefaction.Rmd
+4th Antarctic_Rarefaction.Rmd
 Raw icroplankton abundance data from Yamamoto 1986 is prepared and analized using the rarefaction package iNEXT  as in the Rarefaction_Heatmap.Rmd. Because of the large number of individuals Rarefaction using abundance may not be the apropriate method and is very computationally intensive. This file will take several hours to run on the average computer. 
 Yamamoto, Tamiji. "Small-scale variations in phytoplankton standing stock and productivity across the oceanic fronts in the Southern Ocean." Memoirs of National Institute of Polar Research. Special issue 40 (1986): 25-41.
 
 REQUIRED:
 -AntarcticOceandatasheet.csv
 
-5. 
+5. NeutralTest.Rmd
+A test of neutrality is constructed built upon Jabot 2011's research on tests of neutrality. The test is also expanded upon using bootstrap techniques. 
+REQUIRED: 
+-centiorigin.csv
+-"CleanTetame.csv"
 
-6. TestoftheNeutralTest
+6th TestoftheNeutralTest
 An explenation is provided for various statistical techniques used in scripts designed to simmulate and subsequently test for the occurance of neutrality or not, as defined in the The Neutral Theory of Biodiversity and examples are given. This is a helpful document for better understand the test of neutrality. 
 
-7. PlottingforMers contains instructions for creating figures for the MERS journal and some formatting codes. It is not designed to be built as an html or ran as a script. 
+REQURIED: 
+-ctfsAbund.csv
+
+7th PlottingforMers contains instructions for creating figures for the MERS journal and some formatting codes. It is not designed to be built as an html or ran as a script. 
+
+LIST OF CSV FILES AND SOURCES:
+
   
