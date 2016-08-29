@@ -71,25 +71,35 @@ REQURIED:
 
 KuroAllData.csv
         The original list of abiotic and nutrient measurements for each water sample taken during the sampling cruise. The data is organized with observations for a given sample in columns and samples in rows.
+
 Adiv.abiotic.csv
         The KuroAllData with missing data rows removed and Chloropyll and diversity indices added.
+
 Allbigstuff.csv
         A spreadsheet listing microplankton and picoplankton abundances for major taxonomic phytoplankton groups. Samples are by row and identified by their station and bottle number. Abundances counts are cells/liter.
+
 Kuroshio_Phytoplankton.csv
         A spreadsheet listing microplankton abundances for Diatom and Dinoflagellate species, identified to the species level or, at times, the genus. Identification and abundance counts were done via microscopy techniques. See Clayton et al. 2014. Samples are by row and identified by their station and bottle number. Abundances counts are cells/liter. 
   Clayton, Sophie, Takeyoshi Nagai, and Michael J. Follows. "Fine scale phytoplankton community structure across the Kuroshio Front." Journal of Plankton Research (2014): fbu020.
+  
 origin.csv
         A spreadsheet listing microplankton and picoplankton abundances which includes diatoms, dinoflagellates, and other major phytoplankton groups. Major phytoplankton taxa abundance and identity was done via flow cytometry. Samples are by row and identified by their station and bottle number. Abundances counts are cells/liter.
+
 centiorigin.csv
         The origin.csv spreadsheet with cell counts converted to centiliters (the original scale of observation), with rows with missing data removed, and with row numbers added to keep track of things.
+
 centitest.csv
         The Kuroshio_Phytoplankton.csv spreadsheet with cell counts converted to centiliters (the original scale of observation), with rows with missing data removed, and with row numbers added to keep track of things.
+
 centiStation.csv
         The centitest file with abundance counts of microplankton integrated by for all samples in a given station, leaving only an abundance per station. Abundances may not be whole numbers.
+
 CleanTetame.csv
         Neutral paramemters for the Kuroshio calculated in Tetame 2.1 and simplified for ease of use. Samples with challengingly large Theta values were also removed. This cleaned dataframe was made using the CleanupTetame function.
+
 ctfsAbund.csv
         tree abundance data by species, species identity not listed and not included. A test dataset to use for example purposes. The raw data is also included in the csv file ctfsRawData.csv.
+
 AntarcticOceandatasheet.csv
         microplankton diatom and dinoflagellate abundances identified to the species and, at times, genus level. Phytoplankton were identified by microscopy. Samples are grouped by region of the survey. Abundances counts are cells/liter. Data taken from Yamamoto et al. (1986).
 
