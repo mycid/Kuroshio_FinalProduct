@@ -1,0 +1,300 @@
+---
+title: "Clustering_Rareification_Heatmap"
+author: "Trevor Eakes"
+date: "May 8, 2016"
+output:
+  pdf_document: default
+  html_document: default
+---
+##Rarefaction Methods for the Kuroshio
+
+####Rarefaction is a method for comparing diversity between sample groups which may have different coverage, area, or even distributions. It estimates the relationship between how diversity such as richness or the 1st order Hill number accumulates as more individuals/samples are collected. Recent development of this package and the idea behind rarefaction now allow for using abundance in adition to frequency. Previously I could only use frequency with this idea which is statistically less powerful. 
+
+Research on rarefaction conducted by:
+Dr. Anne Chao
+National Tsing Hua University
+Ecological Statistics, biodiversity
+
+##First to prepare the data
+Note: You must first run the dataframe cunstruction Rmd chunks.
+The file is titled DiversityDataframeConstruction.Rmd
+
+You will also need the following packages downloaded: 
+gplots
+ggplots2
+iNEXT
+
+###Dataframe creation and visualization
+
+####Note, other graphs may be created from the data easily by changing the inputs in this script. Only relavent graphs have been chosen for printing. 
+```{r}
+centitest <- read.csv('centitest.csv') #Pull up processed phytoplankton cell 
+#counts csv from directory
+Adiv.abiotic <- read.csv('Adiv.abiotic.csv')# Pull up all 
+#other related environmental and diversity data
+centitest.Clade <- cbind(clades=Adiv.abiotic$cluster, centitest)
+#adding the clade t centitest
+
+#Clustering the Fillament manually by salinity and position
+Adiv.abioticR <- cbind("rows"=c(1:nrow(Adiv.abiotic)), Adiv.abiotic) 
+# add rows to keep track of things
+Fillament <- Adiv.abioticR[which(Adiv.abioticR[, "DfromF"]>0),]
+#Take stations north of the front
+
+
+#More manual editing, WILL NEED TO ADJUST THIS AS EASY,
+#MAYBE SET UP OBJECTIVE FILTERING ALGORYTHM 
+Fillament <- Fillament[which(Fillament[,"S"]>33.85),] #Take stations 
+#Above 33.9 salinity
+Fillament <- Fillament[which(Fillament["lat"]>35.99),]
+Fillament <- Fillament[which(Fillament["station"]!=2),]
+# must manually input single station number you want removed each time 
+Fillament <- Fillament[which(Fillament["station"]!=3),] 
+Fillament <- Fillament[which(Fillament["station"]!=2),]
+Fillament <- Fillament[which(Fillament["depth..m."]<80),]
+
+#vISUALIZE FILLAMENT STATIONS
+require(ggplot2)
+jet.colors <- colorRampPalette(c("#00007F", "#007FFF", "cyan", "#7FFF7F", "yellow",
+"#FF7F00", "#7F0000"))
+
+ggplot(Fillament, aes(x=lon, y=lat, colour=Theta))+ 
+geom_point(size=10, position=position_dodge(), stat="identity")+
+scale_color_gradientn(colours=jet.colors(7), space="rgb", guide="colourbar")
+#
+ggplot(Fillament, aes(x=lat, y=Theta, colour=S)) + geom_point(size=10,              position=position_dodge(), stat="identity")+
+scale_color_gradientn(colours=jet.colors(7), space="rgb", guide="colourbar")
+#VISUALIZE WHERE FILLAMENT IS RELATIVE TO ALL OTHER SAMPLES
+Fill <- data.frame(rows=Fillament$rows, class=rep("Fill", length(Fillament$rows)))
+Else <- Adiv.abioticR[-c(Fillament$rows), ]
+Else <- data.frame(rows=Else$rows,  class=rep("Else", length(Else$rows)))
+class <- rbind(Else, Fill)
+class <- class[order(class$rows),]
+Adiv.abioticR <- cbind(Adiv.abiotic, class)
+#
+ggplot(Adiv.abioticR, aes(x=lat, y=depth..m., colour=lon, shape=factor(class)))+
+geom_point(size=3,position=position_dodge(), stat="identity")+
+scale_color_gradientn(colours=jet.colors(7), space="rgb", guide="colourbar")
+
+```
+
+###Setting up the fillament data and preparing for rarefaction
+
+```{r}
+
+  SplitData <- function(data, column, header){
+  #data=dataframe, column=the the number of
+  #the column desired to be used as a numerical factor,
+#header is the title of the data frames without the numbers at the end.
+#MUST BE IN PARATHESES
+libr <- setNames(split(data, data[, column]), paste0(header, unique(data[,column])))
+#Seperates the dataframe into multiple dataframes based on the factor
+  return(libr) #Exports both s and each individual, new data frame to the global environment 
+  }
+fillament <- centitest.Clade[Fillament$rows,]
+#Grab data for only fillament stations
+centitest.Clade <- centitest.Clade[-Fillament$rows,] 
+#remove fillament stations from centitest.Clade
+SplitD <- SplitData(centitest.Clade, 1, 'dfcluster') 
+#Split up the data into the remaining clasified water masses
+dfcluster1 <- SplitD$dfcluster1
+dfcluster2 <-SplitD$dfcluster2
+dfcluster3 <- SplitD$dfcluster3
+#sums species in each cluster
+Clus1 <- as.numeric(apply(dfcluster1[,6:ncol(dfcluster1)], 2, function(x) sum(x>0)))
+#gets rid of the 0's, add the number of rows to the front to match the package format
+clus1 <- c(nrow(dfcluster1), Clus1[Clus1>0])#And so on
+Clus2 <- as.numeric(apply(dfcluster2[,6:ncol(dfcluster2)], 2, function(x) sum(x>0)))
+clus2 <- c(nrow(dfcluster2), Clus2[Clus2>0])
+Clus3 <- as.numeric(apply(dfcluster3[,6:ncol(dfcluster3)], 2, function(x) sum(x>0)))
+clus3 <- c(nrow(dfcluster3), Clus3[Clus3>0])
+Clus4 <- as.numeric(apply(fillament[,6:ncol(fillament)], 2, function(x) sum(x>0)))
+clus4 <- c(nrow(fillament), Clus4[Clus4>0])
+
+#For abundance, ABUNDANCE MOST INFORMATIVE
+clusA1 <- as.numeric(apply(dfcluster1[,6:ncol(dfcluster1)], 2, function(x) sum(x))) 
+#sum species abundances
+clusA2 <- as.numeric(apply(dfcluster2[,6:ncol(dfcluster2)], 2, function(x) sum(x)))
+clusA3 <- as.numeric(apply(dfcluster3[,6:ncol(dfcluster3)], 2, function(x) sum(x)))
+clusA4 <- as.numeric(apply(fillament[,6:ncol(fillament)], 2, function(x) sum(x)))
+
+#Making Rarefaction lists for the clusters with row names
+Rarefaction <- list("Deep"=clus1, "Fillament"=clus4, "Kuroshio"=clus2, "Oyashio"=clus3) 
+RarefactionAbund <- list("Deep"=clusA1, "Fillament"=clusA4, "Kuroshio"=clusA2, "Oyashio"=clusA3)
+```
+
+###List of stations and their depths
+
+```{r}
+#Summarizing Function, returns mean, standard deviation, range, and # of observations
+summarize <- function(data) {
+Means <- apply(data, 2, function(x) mean(x))
+SD <- apply(data, 2, function(x) sd(x))
+Min<-apply(data, 2, function(x) min(x))
+Max<-apply(data, 2, function(x) max(x))
+Obs<- apply(data, 2, function(x) length(x))
+summry <- cbind(Means, SD, Min, Max, Obs)
+rownames(summry) <- colnames(data)
+return(summry)
+}
+#
+WaterM <- cbind(clades=rep(4, length(Fillament$rows)), X=Fillament$rows)
+#add code for fillament
+WaterM <- rbind(WaterM, centitest.Clade[, 1:2]) #combine with other clade data
+WaterM <- WaterM[order(WaterM[,2]),] #Reorder by row number
+Adiv.abioticC <- cbind(WaterM, Adiv.abiotic) #add back to the dataframe
+
+#Summary
+CladeAdiv <- SplitData(Adiv.abioticC, "clades", "Adiv")
+DeepAdiv <- CladeAdiv$Adiv1
+FillAdiv <- CladeAdiv$Adiv2
+OyaAdiv <- CladeAdiv$Adiv3
+KuroAdiv <- CladeAdiv$Adiv4
+(DeepSmry <- summarize(DeepAdiv[,c("Chlorophyll", "Theta", "S", "depth..m.", "Richness",
+"Cellcount", "ShannonWiener", "sigPoDen")]))
+(FillSmry <- summarize(FillAdiv[,c("Chlorophyll", "Theta", "S", "depth..m.", "Richness",
+"Cellcount", "ShannonWiener", "sigPoDen")]))
+(OyaSmry <- summarize(OyaAdiv[,c("Chlorophyll", "Theta", "S", "depth..m.", "Richness",
+"Cellcount", "ShannonWiener", "sigPoDen")]))
+(KuroSmry <- summarize(KuroAdiv[,c("Chlorophyll", "Theta", "S", "depth..m.", "Richness",
+"Cellcount", "ShannonWiener", "sigPoDen")]))
+#
+#Number of Species which appear once or twice for each cluster
+Kurolets <- length(which(Clus1<3 & Clus1>0)) #Kuroshio samples
+Oyalets <- length(which(Clus2<3 & Clus2>0))  #Oyashio samples
+Deeplets <- length(which(Clus3<3 & Clus3>0)) #Deep samples
+Fillamentlets <- length(which(Clus4<3 & Clus4>0)) #Fillament
+#
+#Fillament Station info
+(Fillamentinfo <- Adiv.abiotic[Fillament$rows, c("depth..m.", "station", "lat", "lon") ])
+#Other water masses info
+(KuroshioInfo <-Adiv.abiotic[dfcluster1$X,c("depth..m.", "station", "lat", "lon") ])
+(OyashioInfo <- Adiv.abiotic[dfcluster2$X,c("depth..m.", "station", "lat", "lon") ])
+(DeepInfo <-Adiv.abiotic[dfcluster3$X,c("depth..m.", "station", "lat", "lon") ])
+
+
+```
+##Heatmap ploting
+
+Finally, We visualize how the communities appear in each clustered water mass, this can tell us why the water masses are considered different and in what way they difer in species abundance and presence
+
+This is an important figure for understanding the Kuroshio 
+
+Values are based off of phytoplankton incidence (# of times observed) which has been divided by the total number of samples in each group. We also use raw abundance data from each cluster to visualize actual cell counts. 
+
+
+```{r fig.width = 5, fig.height = 12}
+require(gplots)# for heatmap.2
+library(RColorBrewer)# for better color options
+
+#rounding count data
+#For rounding frequency count data and standardizing it to the sample size
+#Clus1, Clus2, Clus3, & Clus4 objects from the previous chunk contain the incidence
+#information for each cluster.
+#dfcluster# is the dataframe from which the centiliter abundance species sums 
+#for the water mass were calculated and has the number of samples in rows
+clus1c <- round(Clus1/nrow(dfcluster1[,-c(1:2)]), 2)*100
+clus2c <- round(Clus2/nrow(dfcluster2[,-c(1:2)]), 2)*100
+clus3c <- round(Clus3/nrow(dfcluster3[,-c(1:2)]), 2)*100
+clus4c <- round(Clus4/nrow(fillament[,-c(1:2)]), 2)*100
+
+
+Incidence <- as.matrix(data.frame(cbind(Kuroshio=clus1c, Filament=clus4c, 
+Oyashio=clus3c, Deep=clus2c))) #combining into single data frame
+Kuroshio_Phytoplankton <- read.csv("Kuroshio_Phytoplankton.csv")
+#grab the original phytoplankton abundances dataframe
+Kuroshio_Phytoplankton <- Kuroshio_Phytoplankton[-c(97:99, 186:190), -c(1,2)] 
+#Editing base data frame, getting rid of uneaded columns and rows
+
+#Raw Abundance Data
+HeatAbund <- as.matrix(as.data.frame(RarefactionAbund))
+#changing to a dataframe
+row.names(HeatAbund)<-colnames(Kuroshio_Phytoplankton) 
+#changing row names of Incidence to their true Phytoplankton names
+row.names(Incidence)<-colnames(Kuroshio_Phytoplankton)
+#
+HeatAbund<-HeatAbund[order(HeatAbund[,3],decreasing=TRUE),]
+#ordering rows from greatest to smallest
+Incidence<-Incidence[order(Incidence[,3],decreasing=TRUE),]
+#color scheme
+col <-jet.colors(398)
+col <-c("white", col)
+# (optional) defines the color breaks manually for a "skewed" color transition
+col_breaks = c(seq(0, 1, length=50), 
+               seq(2, 3, length=50),
+               seq(4,8,length=50),              
+               seq(9,15,length=50),
+               seq(16, 25, length=50),
+               seq(26, 50, length=50),
+               seq(51, 75, length=50),
+               seq(76, 150, length=50))   
+#Heatmap plotting function, just add matrix!
+AbundHeatmap <- function(matrix, col, breaks) {
+heatmap.2(matrix,
+               cellnote = matrix, # same data set for cell labels
+               offsetCol = 0.5,
+               notecol="black",      # change font color of cell labels to black
+               trace="none",      # turns off trace lines inside the heat map
+               margins =c(8,8),     # widens margins around plot
+               col=col,       # use on color palette defined earlier 
+               breaks= breaks,    # enable color transition at specified limits
+               dendrogram="none", # only draw a row dendrogram
+               Colv=NA, # turn off column clustering
+               cexCol=2.2,
+               cexRow=1.3,
+               srtCol=30,
+               key=TRUE,
+               key.title = NULL,
+               symbreaks=TRUE,
+               symkey=FALSE,
+               density.info="none",
+               densadj = 0.25,
+               Rowv = FALSE,
+               #denscol="black",
+               keysize=.5,
+               #( "bottom.margin", "left.margin", "top.margin", "left.margin" )
+               #key.par=list(mar=c(7,.5,3,1)),
+                #lmat -- added 2 lattice sections (5 and 6) for padding
+               lmat=rbind( c(0, 3, 0), c(2,1,0), c(0,4,0) ), 
+          lhei=c(.5, 5, .3),
+          lwid = c(.5,3,.5))}
+par(mar = rep(1, 4))
+AbundHeatmap(HeatAbund, col=col, breaks=col_breaks) #Raw Abundance data
+#new breaks for Incidence
+Inc_col_breaks = c(seq(0, 1, length=50), seq(2, 3, length=50),seq(4,5,length=50),
+seq(6,8,length=50),seq(9, 15,
+length=50),seq(16, 20, length=50), seq(21, 30, length=50), seq(31, 45, length=50))   
+AbundHeatmap(Incidence, col=col, breaks=Inc_col_breaks)
+```
+
+###Rarefaction and graphing Rarefaction curves
+
+Note: 
+Incidence rarefaction is turned on for improved speed running Rmd. Due to recent package updates incidence input data needs to be adjusted to match apropriate package format.
+
+Aditional plotting may be done here using the INEXT package. This just shows the most relavent plots of interest 
+
+```{r}
+require(iNEXT) #Rarefaction package by Chao
+#INEXT creates rarefaction dataframe and metadata for a group of samples
+A0 <- iNEXT(RarefactionAbund, q=0,  datatype="abundance") #richness 
+A1 <- iNEXT(RarefactionAbund, q=1,  datatype="abundance") #Shannon based diversity
+#
+#z0 <- iNEXT(Rarefaction, q=0,  datatype="Incidence_freq") #Incidence counts
+#z1 <- iNEXT(Rarefaction, q=1,  datatype="incidence") #Incidence counts
+
+#Rarefaction of abundance data showing richness
+RarefactionRichness <- ggiNEXT(A0, type = 1, facet.var = "none", color.var = "site") 
+RarefactionRichness+ylab("Richness")
+#Rarefaction of abundance data showing diversity (H1)
+RarefactionH <- ggiNEXT(A1, type = 1, facet.var = "none", color.var = "site") 
+RarefactionH+ylab("1st order Hill #")
+#Coverage plotted for 1st order hill number
+RarefactionCoverage <- ggiNEXT(A1, type = 2, facet.var = "none", color.var = "site")
+RarefactionCoverage+ylab("Sample coverage H1")
+#Creates rarefaction graphs
+```
+
+
+
+

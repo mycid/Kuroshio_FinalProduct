@@ -1,0 +1,115 @@
+---
+title: "Mantel Tests"
+author: "Trevor Eakes"
+date: "May 6, 2016"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+
+===============================================================
+###Note: 
+####Mantel tests are no longer considered an apropriate method for this kind of ecological analysis given that a matrix of jaccard similiarities is not a true disimilarity matrix. A better comparative anaylsis between community, space, and environment will ultimately need to be used based off of most current statistical techniques. 
+
+Now that that's been covered,
+
+First:
+I set up the data frames needed to create the disimilarity matrices
+
+
+
+You will need to have saved in the directory the Adiv.abiotic dataframe, which will be imported here and the 'test' dataframe of phytoplankton abundances by station. These dataframes are built under the dataframe construction Rmd file. 
+
+You will also need the following packages:
+
+gplots
+codep
+geosphere
+vegan
+BBmisc
+
+===============================================================
+```{r}
+Adiv.abiotic <- read.csv('Adiv.abiotic.csv')
+phyto <- read.csv('centitest.csv')
+
+#We will need to make a few adjustments to the dataframes to get them ready.
+
+phyto <- phyto[, c(5:length(phyto))] #This get's rid of the station information, and get's rid of the last 5 rows. 
+#The last 5 rows don't have any physical data on them so I discard these. 
+
+Phyto<- phyto[rowSums(phyto)!=0, ] 
+#Now we get rid of all stations that have no diatoms or dinoflagellates
+
+Phyto[Phyto>0]<- 1 
+#Data.frame is changed to binary logic, presence absence only instead of abundances
+
+Adiv.abioticD <- Adiv.abiotic[-c(which(rowSums(phyto)==0)),]
+# Get rid of the same stations which have no diatoms or dinoflagellates
+
+ 
+LLD <- cbind(Adiv.abioticD[, c("lon", "lat", "depth..m.")]) 
+#new dataframe with Longitude, Latitude and depth
+```
+
+Okay, now that the data.frames needed have been added and eddited into the proper form we can make the distance matrices.
+
+Here we will have the phytoplankton community dissimilarity matrix titled as 'BioticDist'. This will be a Jaccard dissimilarity index. 
+
+The position distance matrix which will be 'PositionDist'and plain old Euclidean.
+
+And the Environmental dissimilarity matrix which will called 'EnviroDist'and also Euclidean.
+
+```{r}
+require(codep)
+require(geosphere)
+require(vegan)
+require(BBmisc)
+LL<- LLD[,-3] #don't know how to deal with depth just yet
+PositionDist <- as.matrix(distm(LL)) #without depth
+PositionDistd <- as.matrix(dist(LLD)) #with depth. T
+#his method is a measure of relative euclidean depth, gives depth over exagerated importance 
+BioticDist <- as.matrix(vegdist(Phyto, method="jaccard", na.rm=TRUE))
+
+EnvironDist <- as.matrix(dist(normalize(Adiv.abioticD[c("S", "Theta", "Chlorophyll",
+'DOC..uM.', 'TDN..uM.', 'SiO2..uM.', 'DON..uM.', 'NO3..uM.', 'NH4.uM.', 'PO4..uM.', 'P.', 'Si.')]))) 
+#All the physical measurements
+
+SimpleEnvironDist <- as.matrix(dist(normalize(Adiv.abioticD[c("S", "Theta", "Chlorophyll")]))) 
+#Just the basics
+```
+
+Next the Mantel test will be performed
+
+```{r}
+require(gplots)
+mantel.partial(BioticDist, PositionDist, EnvironDist,   method="pearson", permutations=10000) 
+#Partial mantel compares the community simmilarity to the distance matrix with
+#the environment partially out
+
+mantel.partial(BioticDist, EnvironDist, PositionDist,   method="pearson", permutations=10000) 
+#Partial mantel compares the community simmilarity to the 
+#distance matrix with the distance partially out
+
+mantel(BioticDist, PositionDistd,   method="pearson", permutations=10000)
+#Mantel test between community simmilarity and distance with depth but 
+#not with real distances
+
+mantel(BioticDist, PositionDist,   method="pearson", permutations=10000)
+#Mantel test between community simmilarity and distance without depth (just lat and lon)
+
+mantel(BioticDist, EnvironDist, method="pearson", permutations=1000)
+# Between community and environment
+
+mantel(BioticDist, SimpleEnvironDist, method="pearson", permutations = 1000)
+#Between community and simple environment
+
+#Just to see what the matrix comparisons look like
+bandplot(as.list(PositionDistd), as.list(BioticDist))
+bandplot(as.list(PositionDist), as.list(BioticDist))
+bandplot(as.list(EnvironDist), as.list(BioticDist))
+bandplot(as.list(SimpleEnvironDist), as.list(BioticDist))
+```
+Results: No strong relationships or trends. 
+

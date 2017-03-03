@@ -1,0 +1,131 @@
+---
+title: "Antarctic_Rarefaction"
+author: "Trevor Eakes"
+date: "August 6, 2016"
+output:
+  html_document: default
+  pdf_document: default
+---
+Rarefaction methods applied to Antarctic phytoplankton cell abundance counts taken from the raw data analized in Yamamoto, 1986. This analysis is faulty at the momement because it is to computationally challenging for the computer to manage, and the methods to not apply for how large the sample size is. See notes in script below.
+
+###Note Diatoms in Antarc are tentatively from column 3 to 50
+
+Preparing the data
+```{r}
+source('NifftyTrevFunctions.R')
+Antarc <- read.csv("AntarcticOceandatasheet.csv") #Pull up datasheet
+head(Antarc)
+Antarc[,3] <-NULL #Get rid of diatoms column
+Antarc[is.na(Antarc)] <- 0 #Get rid of pesky NA's. 
+AntarcDiversity <- Create.Diversity.I(Antarc, 3, ncol(Antarc))#Use niffty function to 
+#make diversity indices
+View(AntarcDiversity)
+SplitData(Antarc, "Location", "") #Splits up data into the 4 regions
+#Antarctic
+Antarctic <- Antarctic[, 3:ncol(Antarctic)] #take only the phytoplankton here 
+Antarctic <- Antarctic[-which(Antarctic==0)] #get rid of 0's
+Antarctic <- Antarctic[!is.na(Antarctic)] #get rid of NA's
+#Middle
+Middle <- Middle[, 3:ncol(Middle)]
+Middle <- colSums(Middle) #add columns
+Middle <- Middle[-which(Middle==0)]
+Middle <- Middle[!is.na(Middle)]
+#Subantarctic
+Subantarctic <- Subantarctic[, 3:ncol(Subantarctic)]
+Subantarctic <- colSums(Subantarctic)
+Subantarctic <- Subantarctic[-which(Subantarctic==0)]
+Subantarctic <- Subantarctic[!is.na(Subantarctic)]
+#Subtropical
+Subtropical <- Subtropical[, 3:ncol(Subtropical)]
+Subtropical <- colSums(Subtropical)
+Subtropical<- Subtropical[-which(Subtropical==0)]
+Subtropical<- Subtropical[!is.na(Subtropical)]                                                    
+```
+
+### A heatmap plot of the abundance of different species in this data set.
+
+```{r, fig.width=5, fig.height=25}
+#Create big dataframe 
+require(ggplot2)
+require(gplots)
+require(iNEXT) #Rarefaction package by Chao
+#
+Antarc2 <- Antarc[,3:ncol(Antarc)]
+Antarc2<- rbind(Antarc2[1,], colSums(Antarc2[c(2,5,8),]), colSums(Antarc2[c(3,4,7),]), colSums(Antarc2[c(6,9),]))
+Antarc2<- t(round(apply(Antarc2, 1, function(x) x/sum(x)), digits=4)) #simplified for easy plotting,
+#now Antarc3 each abundance is a percentage of the total cells found per region
+row.names(Antarc2) <- c("Antarctic", "Middle", "SubAntarctic", "Subtropical")
+Antarc2 <- t(Antarc2)
+Antarc2 <- Antarc2[order(Antarc2[,1]),decreasing=TRUE]
+Antarc2[is.na(Antarc2)] <- 0
+jet.colors <- colorRampPalette(c("#00007F", "#007FFF", "cyan", "#7FFF7F", "yellow",
+"#FF7F00", "#7F0000"))
+col <-jet.colors(48)
+col <-c("white", col)
+# (optional) defines the color breaks manually for a "skewed" color transition
+col_breaks = c(seq(0, .001, length=1), 
+               seq(.002, .01, length=10),
+               seq(.011,.05,length=10),              
+               seq(.051,.1,length=10),
+               seq(.11, .25, length=9),
+               seq(.251, .5, length=5),
+               seq(.51, 1, length=5))
+#Heatmap plotting function, just add matrix!
+AbundHeatmap <- function(matrix, col, breaks) {
+heatmap.2(matrix,
+               cellnote = matrix, # same data set for cell labels
+               offsetCol = 0.5,
+               notecol="black",      # change font color of cell labels to black
+               trace="none",      # turns off trace lines inside the heat map
+               margins =c(9,9),# widens margins around plot
+                cexCol=2.2,
+                cexRow=1.3,
+                srtCol=30,
+               col=col,       # use on color palette defined earlier 
+               breaks= breaks,    # enable color transition at specified limits
+               dendrogram="none", # only draw a row dendrogram
+               Colv=NA,              # turn off column clustering
+               key=TRUE,
+               key.title = NULL,
+               symbreaks=TRUE,
+               symkey=FALSE,
+               density.info="none",
+               densadj = 0.25,
+               Rowv = FALSE,
+               #denscol="black",
+               keysize=.2,
+               #( "bottom.margin", "left.margin", "top.margin", "left.margin" )
+               #key.par=list(mar=c(7,.5,3,1)),
+                #lmat -- added 2 lattice sections (5 and 6) for padding
+               lmat=rbind( c(0, 3, 0), c(2,1,0), c(0,4,0) ), 
+          lhei=c(.5, 5, .3),
+          lwid = c(.5,3,.5))}
+par(mar = rep(1, 4))
+AbundHeatmap(Antarc2, col=col, breaks=col_breaks)
+
+
+```
+###Rarefaction of the prepared data
+
+####Note: rarefaction seems problematic here
+
+This script takes a very long time to run because of the high number of cells counted in the Antarctic samples. The rarefaction index may be working but likely does not give meaningful results at this scale. Asymptope of the rarefaction curve is reached very quickly relative to the total number of individuals. Consideration of the method, scaling, and aplicability should be made here. Try running the script overnight, if it is still not working a subsampling aproach of the population may need to be designed. 
+
+##Script turned off for functionality
+
+AntarcR <- list("Antarctic"=Antarctic, "Subantarctic"=Subantarctic, "Middle"=Middle, "Subtropical"=Subtropical)
+#
+#INEXT creates rarefaction dataframe and metadata for a group of samples
+A0 <- iNEXT(AntarcR, q=0,  datatype="abundance") #richness 
+A1 <- iNEXT(AntarcR, q=1,  datatype="abundance") #Shannon based diversity
+
+#Rarefaction of abundance data showing richness
+AntarcRareRichness <- ggiNEXT(A0, type = 1, facet.var = "none", color.var = "site") 
+AntarcRareRichness+ylab("Richness")
+#Rarefaction of abundance data showing diversity (H1)
+AntarcRareH <- ggiNEXT(A1, type = 1, facet.var = "none", color.var = "site") 
+AntarcRareH+ylab("1st order Hill #")
+#Coverage plotted for 1st order hill number
+AntarcRareCoverage <- ggiNEXT(A1, type = 2, facet.var = "none", color.var = "site")
+AntarcRareCoverage+ylab("Sample coverage H1")
+```
